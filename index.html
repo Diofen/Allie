@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Para Allie: flores amarillas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --noche: #1B0B33;   /* morado profundo */
+    --halo: #2B1352;    /* morado de las tarjetas */
+    --rosa: #FF7EC8;
+    --lila: #C9A0FF;
+    --luz: #FFEFFC;
+    /* Pantallas de la pregunta y la carta: paleta invertida (fondo rosado, elementos morados) */
+    --pag-fondo: #FF9AD5;
+    --pag-tarjeta: #FFC2E6;
+    --pag-tinta: #2B1352;
+    --pag-boton-texto: #FFEFFC;
+    --pag-iris: #6A38E0;
+    box-sizing: border-box;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+
+  html, body { margin: 0; }
+  body {
+    background: var(--pag-fondo);
+    color: var(--luz);
+    font-family: "Fraunces", Georgia, "Times New Roman", serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  [hidden] { display: none !important; }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    color: var(--noche);
+    background: var(--rosa);
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 26px;
+    cursor: pointer;
+  }
+  button:focus-visible { outline: 3px solid var(--luz); outline-offset: 3px; }
+  button.secundario {
+    background: transparent;
+    color: var(--luz);
+    border: 2px solid var(--lila);
+  }
+
+  /* ---------- Pantallas previas: pregunta, carta y respuesta "No" ---------- */
+  .centro {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px;
+    animation: entrar 0.5s ease both;
+  }
+
+  .cuadro {
+    width: 100%;
+    max-width: 520px;
+    background: var(--pag-tarjeta);
+    color: var(--pag-tinta);
+    border: 2px solid var(--pag-tinta);
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .cuadro h2 {
+    margin: 0 0 26px;
+    font-size: clamp(1.9rem, 8vw, 2.6rem);
+    font-weight: 600;
+    line-height: 1.15;
+  }
+  .cuadro p { margin: 0 0 26px; font-size: 1.05rem; }
+  .carta { text-align: left; line-height: 1.75; font-size: 1.1rem; }
+  .cuadro > button { min-width: 180px; }
+
+  .opciones { display: flex; gap: 12px; justify-content: center; }
+  .opciones button { flex: 1; max-width: 170px; }
+
+  .centro button { background: var(--pag-tinta); color: var(--pag-boton-texto); }
+  .centro button.secundario { background: transparent; color: var(--pag-tinta); border: 2px solid var(--pag-tinta); }
+  .centro button:focus-visible { outline-color: var(--pag-tinta); }
+
+  @keyframes entrar { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ---------- Pantalla 0: una carta rosa y morada que gira en el espacio ---------- */
+  #sobre {
+    --e: min(21vw, 100px, 15vh);   /* unidad de tamaño de la carta */
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    overflow: hidden;
+    background: #1B0B33;
+  }
+  .brillo-sobre {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 126, 200, 0.24), rgba(255, 126, 200, 0) 60%);
+  }
+  .mundo-sobre {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1200px;
+    pointer-events: none;
+  }
+  .p3 { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+  .mundo-sobre > .p3 { left: 50%; top: 50%; }   /* la carta y las chispas nacen en el centro de la pantalla */
+  .chispa { position: absolute; display: block; }
+
+  .sc { position: absolute; display: block; overflow: hidden; }
+  .sc svg { display: block; width: 100%; height: 100%; }
+  .c-fr, .c-tras {
+    width: calc(var(--e) * 3.2); height: calc(var(--e) * 2.2);
+    left: calc(var(--e) * -1.6); top: calc(var(--e) * -1.1);
+  }
+  .c-fr { transform: translateZ(calc(var(--e) * 0.05)); }
+  .c-tras { transform: rotateY(180deg) translateZ(calc(var(--e) * 0.05)); }
+  .c-izq, .c-der { width: calc(var(--e) * 0.1); height: calc(var(--e) * 2.2); left: calc(var(--e) * -0.05); top: calc(var(--e) * -1.1); background: #4B1FA8; }
+  .c-izq { transform: rotateY(-90deg) translateZ(calc(var(--e) * 1.6)); }
+  .c-der { transform: rotateY(90deg) translateZ(calc(var(--e) * 1.6)); }
+  .c-sup, .c-inf { width: calc(var(--e) * 3.2); height: calc(var(--e) * 0.1); left: calc(var(--e) * -1.6); top: calc(var(--e) * -0.05); background: #4B1FA8; }
+  .c-sup { transform: rotateX(90deg) translateZ(calc(var(--e) * 1.1)); }
+  .c-inf { transform: rotateX(-90deg) translateZ(calc(var(--e) * 1.1)); }
+
+  .pliego {
+    position: absolute;
+    width: calc(var(--e) * 2.8); height: calc(var(--e) * 1.9);
+    left: calc(var(--e) * -1.4); top: calc(var(--e) * -0.95);
+  }
+  .pliego svg { display: block; width: 100%; height: 100%; }
+
+  .solapa-cara {
+    position: absolute;
+    width: calc(var(--e) * 3.2); height: calc(var(--e) * 1.15);
+    left: calc(var(--e) * -1.6); top: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .solapa-cara svg { display: block; width: 100%; height: 100%; }
+  .sol-b { transform: rotateY(180deg); }
+
+  .pista {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: calc(42px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    text-align: center;
+    color: #FFB3E0;
+    font-style: italic;
+    font-size: 1.1rem;
+    pointer-events: none;
+    animation: latir 2.4s ease-in-out infinite;
+  }
+  .pista.oculta { opacity: 0; transition: opacity 0.3s ease; animation: none; }
+  @keyframes latir { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+  /* Solo la carta responde al toque: se detecta sobre su propia forma 3D, no sobre la pantalla entera */
+  #sobre {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  #giro-sobre { pointer-events: auto; cursor: pointer; }
+
+  /* Botón solo para lectores de pantalla y teclado: no se ve ni ocupa la pantalla */
+  .tocar {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    background: transparent;
+  }
+
+  /* ---------- Transición: un círculo rosado que se abre y se cierra ---------- */
+  #iris {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--pag-iris);
+    clip-path: circle(0px at 50% 50%);
+  }
+
+  /* ---------- Pantalla final ---------- */
+  #flores {
+    --u: min(23vw, 100px, 16vh);   /* tamaño de "un bloque" */
+    /* Colores del tema actual (el script los cambia cada vez que se presiona "Soltar más flores") */
+    --noche: #1B0B33;
+    --rosa: #FF7EC8;
+    --brillo: 255, 126, 200;
+    --cuerpo: #B99BFF;
+    --oscuro: #9A7CF0;
+    --vientre: #EBDDFF;
+    --acento: #FF9AD5;
+    --tinta: #1B0B33;
+    --t-piel: #C5AEFF;
+    --t-cap: #7B4DFF;
+    --t-cima: #A583FF;
+    --t-borde: #5636B3;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--noche);
+    transition: background-color 0.6s ease;
+    touch-action: none;
+  }
+  #flores canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  #flores button { color: var(--tinta); }
+  #fondo3d { z-index: 0; }
+  #frente3d { z-index: 3; pointer-events: none; }
+
+  /* Globos de diálogo: son 2D y siguen la cabeza de cada personaje */
+  .burbuja {
+    position: absolute;
+    left: 0; top: 0;
+    z-index: 5;
+    max-width: 190px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    background: #fff;
+    color: #2A1250;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.25;
+    text-align: center;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    will-change: transform;
+  }
+  .burbuja.visible { opacity: 1; }
+  .burbuja::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: var(--cola, 50%);
+    margin-left: -7px;
+    border: 7px solid transparent;
+    border-top-color: #fff;
+  }
+  .ancla { position: absolute; left: -1px; top: -1px; width: 2px; height: 2px; }
+
+  .volver-inicio {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: 14px;
+    z-index: 4;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  .base {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    z-index: 4;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* ---------- Flores estilo Minecraft (CSS 3D) ---------- */
+  .mundo {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1000px;
+    pointer-events: none;
+  }
+  /* Resplandor rosado detrás del bloque */
+  .mundo::before {
+    content: "";
+    position: absolute;
+    width: calc(var(--u) * 7);
+    height: calc(var(--u) * 7);
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(var(--brillo), 0.28), rgba(var(--brillo), 0));
+  }
+
+  .sombra {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: calc(var(--u) * 4);
+    height: calc(var(--u) * 1.1);
+    margin-left: calc(var(--u) * -2);
+    margin-top: calc(var(--u) * 1.3);
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(10, 0, 30, 0.55), rgba(10, 0, 30, 0));
+  }
+
+  .hero { position: relative; width: 0; height: 0; transform-style: preserve-3d; }
+  .flota, .inclinado, .giro {
+    position: absolute; left: 0; top: 0; width: 0; height: 0;
+    transform-style: preserve-3d;
+  }
+  .flota { animation: flotar 5s ease-in-out infinite alternate; }
+  .inclinado { transform: translateY(calc(var(--u) * 0.2)) rotateX(-24deg); }
+
+  .aparece { animation: aparecer 1.1s cubic-bezier(.2, 1.5, .4, 1) 0.95s both; }
+
+  @keyframes flotar { from { transform: translateY(-7px); } to { transform: translateY(7px); } }
+  @keyframes aparecer { from { transform: scale(0); } to { transform: scale(1); } }
+
+  /* Criatura hecha con cajas: cada caja tiene 6 caras y su punto de giro arriba (hombro, cadera, cuello) */
+  .parte, .caja {
+    position: absolute; left: 0; top: 0; width: 0; height: 0;
+    transform-style: preserve-3d;
+  }
+  .caja > i { position: absolute; display: block; background: var(--c, #B99BFF); }
+  .caja > i::after { content: ""; position: absolute; inset: 0; background: rgba(25, 0, 50, var(--osc, 0)); }
+  .cf { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--h)); left: calc(var(--u) * var(--w) * -0.5); top: 0;
+        transform: translateZ(calc(var(--u) * var(--d) * 0.5)); --osc: 0.06; }
+  .cb { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--h)); left: calc(var(--u) * var(--w) * -0.5); top: 0;
+        transform: rotateY(180deg) translateZ(calc(var(--u) * var(--d) * 0.5)); --osc: 0.26; }
+  .cd { width: calc(var(--u) * var(--d)); height: calc(var(--u) * var(--h)); left: calc(var(--u) * var(--d) * -0.5); top: 0;
+        transform: rotateY(90deg) translateZ(calc(var(--u) * var(--w) * 0.5)); --osc: 0.2; }
+  .ci { width: calc(var(--u) * var(--d)); height: calc(var(--u) * var(--h)); left: calc(var(--u) * var(--d) * -0.5); top: 0;
+        transform: rotateY(-90deg) translateZ(calc(var(--u) * var(--w) * 0.5)); --osc: 0.32; }
+  .ca { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--d)); left: calc(var(--u) * var(--w) * -0.5); top: calc(var(--u) * var(--d) * -0.5);
+        transform: rotateX(90deg); }
+  .cx { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--d)); left: calc(var(--u) * var(--w) * -0.5);
+        top: calc(var(--u) * (var(--h) - var(--d) * 0.5)); transform: rotateX(90deg); --osc: 0.4; }
+
+  .sombrita {
+    position: absolute;
+    width: calc(var(--u) * 0.6); height: calc(var(--u) * 0.6);
+    left: calc(var(--u) * -0.3); top: calc(var(--u) * -0.3);
+    transform: translateY(-1px) rotateX(90deg);
+    background: radial-gradient(closest-side, rgba(20, 0, 40, 0.5), rgba(20, 0, 40, 0));
+  }
+
+  /* Caras del bloque de 3 x 1 x 3 */
+  .cara {
+    position: absolute;
+    background-size: var(--u) var(--u);
+    image-rendering: pixelated;
+  }
+  .cara::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(25, 0, 50, var(--osc, 0));
+  }
+  .arriba {
+    width: calc(var(--u) * 3); height: calc(var(--u) * 3);
+    left: calc(var(--u) * -1.5); top: calc(var(--u) * -1.5);
+    transform: rotateX(90deg);
+    background-image: var(--tex-arriba);
+  }
+  .lado {
+    width: calc(var(--u) * 3); height: var(--u);
+    left: calc(var(--u) * -1.5); top: 0;
+    background-image: var(--tex-lado);
+    background-repeat: repeat-x;
+  }
+  .l-f { transform: translateZ(calc(var(--u) * 1.5)); --osc: 0.12; }
+  .l-d { transform: rotateY(90deg) translateZ(calc(var(--u) * 1.5)); --osc: 0.3; }
+  .l-b { transform: rotateY(180deg) translateZ(calc(var(--u) * 1.5)); --osc: 0.24; }
+  .l-i { transform: rotateY(-90deg) translateZ(calc(var(--u) * 1.5)); --osc: 0.4; }
+
+  /* Cada flor son dos planos cruzados, como en el juego */
+  .flor {
+    position: absolute;
+    width: calc(var(--u) * var(--k));
+    height: calc(var(--u) * var(--k));
+    left: calc(var(--u) * var(--k) * -0.5);
+    top: calc(var(--u) * var(--k) * -1 - 1px);
+    background: var(--tex-flor) center / 100% 100% no-repeat;
+    image-rendering: pixelated;
+    transform: translate3d(calc(var(--u) * var(--x)), 0, calc(var(--u) * var(--z))) rotateY(var(--r));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .centro, .flota, .aparece, .pista { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Pantalla 0: la carta que gira; al tocarla se abre y da paso a la pregunta -->
+<section id="sobre" aria-label="Una carta para ti">
+  <div class="brillo-sobre"></div>
+  <div class="mundo-sobre">
+    <div class="p3" id="nube-sobre"></div>
+    <div class="p3" id="giro-sobre">
+      <!-- reverso -->
+      <div class="sc c-tras">
+        <svg viewBox="0 0 320 220" preserveAspectRatio="none" aria-hidden="true">
+          <rect width="320" height="220" fill="#6A38E0"/>
+          <path d="M0 220 L160 100 L320 220 M0 0 L110 110 M320 0 L210 110" stroke="#4B1FA8" stroke-width="2" fill="none"/>
+          <rect x="1.5" y="1.5" width="317" height="217" fill="none" stroke="#4B1FA8" stroke-width="3"/>
+          <g data-carita transform="translate(120 70) scale(8)"></g>
+          <g data-estrella fill="#FFFFFF" transform="translate(34 40) scale(5)"></g>
+          <g data-estrella fill="#C9A0FF" transform="translate(262 150) scale(4)"></g>
+          <g data-estrella fill="#C9A0FF" transform="translate(250 26) scale(3)"></g>
+        </svg>
+      </div>
+      <!-- bordes -->
+      <div class="sc c-izq"></div><div class="sc c-der"></div>
+      <div class="sc c-sup"></div><div class="sc c-inf"></div>
+      <!-- la carta que sale del sobre -->
+      <div class="pliego" id="pliego">
+        <svg viewBox="0 0 280 190" preserveAspectRatio="none" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="277" height="187" rx="10" fill="#FFE3F4" stroke="#4B1FA8" stroke-width="3"/>
+          <g fill="#6A38E0" opacity="0.55">
+            <rect x="30" y="34" width="150" height="9" rx="4.5"/><rect x="30" y="58" width="220" height="9" rx="4.5"/>
+            <rect x="30" y="82" width="200" height="9" rx="4.5"/><rect x="30" y="106" width="215" height="9" rx="4.5"/>
+            <rect x="30" y="130" width="120" height="9" rx="4.5"/>
+          </g>
+          <g data-carita transform="translate(204 126) scale(3.6)"></g>
+          <g data-estrella fill="#FF7EC8" transform="translate(238 22) scale(3.5)"></g>
+        </svg>
+      </div>
+      <!-- frente -->
+      <div class="sc c-fr">
+        <svg viewBox="0 0 320 220" preserveAspectRatio="none" aria-hidden="true">
+          <rect width="320" height="220" fill="#FF9AD5"/>
+          <polygon points="0,0 160,112 0,220" fill="#FF7EC8"/>
+          <polygon points="320,0 160,112 320,220" fill="#FF7EC8"/>
+          <polygon points="0,220 160,100 320,220" fill="#FFB3E0"/>
+          <path d="M0 0 L160 112 L320 0 M0 220 L160 100 L320 220" stroke="#4B1FA8" stroke-width="2" fill="none"/>
+          <rect x="1.5" y="1.5" width="317" height="217" fill="none" stroke="#4B1FA8" stroke-width="3"/>
+          <g data-estrella fill="#FFFFFF" transform="translate(28 92) scale(5)"></g>
+          <g data-estrella fill="#FFFFFF" transform="translate(267 92) scale(5)"></g>
+          <g data-estrella fill="#6A38E0" transform="translate(146 160) scale(5)"></g>
+          <g data-estrella fill="#C9A0FF" transform="translate(58 150) scale(3)"></g>
+          <g data-estrella fill="#C9A0FF" transform="translate(246 150) scale(3)"></g>
+        </svg>
+      </div>
+      <!-- solapa: se cierra sobre el frente y se abre hacia atrás -->
+      <div class="p3" id="solapa">
+        <div class="solapa-cara sol-f">
+          <svg viewBox="0 0 320 115" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points="1.5,1.5 318.5,1.5 160,113" fill="#6A38E0" stroke="#4B1FA8" stroke-width="3" stroke-linejoin="round"/>
+            <circle cx="160" cy="44" r="27" fill="#FFE3F4" stroke="#4B1FA8" stroke-width="2.5"/>
+            <g data-carita transform="translate(142 26) scale(3.6)"></g>
+          </svg>
+        </div>
+        <div class="solapa-cara sol-b">
+          <svg viewBox="0 0 320 115" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points="1.5,1.5 318.5,1.5 160,113" fill="#C9A0FF" stroke="#4B1FA8" stroke-width="3" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="pista" id="pista-sobre">Toca la carta</p>
+  <button type="button" class="tocar" id="abrir-sobre" aria-label="Abrir la carta"></button>
+</section>
+
+<!-- Pantalla 1: pregunta -->
+<section class="centro" id="inicio" hidden>
+  <div class="cuadro">
+    <h2>¿Eres tú Allie?</h2>
+    <div class="opciones">
+      <button type="button" id="si">Sí</button>
+      <button type="button" id="no" class="secundario">No</button>
+    </div>
+  </div>
+</section>
+
+<!-- Pantalla 2: dedicatoria y botón "Recibir" -->
+<section class="centro" id="carta" hidden>
+  <div class="cuadro">
+    <p class="carta">
+      Nuestros caminos se conectaron de una forma no muy convencional, pero a pesar de eso
+      estamos aquí, aún los dos, conociéndonos más y más. Sé que no es lo más óptimo hacerlo
+      de este modo, pero es lo que la distancia me permite por el momento, y aunque no lo diga
+      tanto como antes, te quiero mucho, sé que lo sabes; nos vemos en diciembre, Allie.
+    </p>
+    <button type="button" id="recibir">Para ti, Allie</button>
+  </div>
+</section>
+
+<!-- Si la respuesta es "No" -->
+<section class="centro" id="otra" hidden>
+  <div class="cuadro">
+    <h2>Esta sorpresa es solo para Allie</h2>
+    <button type="button" id="volver" class="secundario">Volver</button>
+  </div>
+</section>
+
+<!-- Pantalla final: flores amarillas estilo Minecraft girando, con flores 3D flotando alrededor -->
+<main id="flores" hidden>
+  <canvas id="fondo3d" aria-hidden="true"></canvas>
+
+  <div class="mundo" role="img" aria-label="Flores amarillas al estilo Minecraft girando sobre un bloque de césped rosado">
+    <div class="sombra aparece"></div>
+    <div class="hero aparece">
+      <div class="flota"><div class="inclinado"><div class="giro">
+        <div class="cara arriba"></div>
+        <div class="cara lado l-f"></div>
+        <div class="cara lado l-d"></div>
+        <div class="cara lado l-b"></div>
+        <div class="cara lado l-i"></div>
+        <!-- las flores se añaden desde el script -->
+      </div></div></div>
+    </div>
+  </div>
+
+  <canvas id="frente3d" aria-hidden="true"></canvas>
+  <div class="burbuja" id="burbuja-c" aria-live="polite"></div>
+  <div class="burbuja" id="burbuja-t" aria-live="polite"></div>
+  <button type="button" class="volver-inicio" id="volver-inicio

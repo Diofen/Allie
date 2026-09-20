@@ -404,7 +404,7 @@
   <div class="brillo-sobre"></div>
   <div class="mundo-sobre">
     <div class="p3" id="nube-sobre"></div>
-    <div class="p3" id="giro-sobre">
+        <div class="p3" id="giro-sobre">
       <!-- reverso -->
       <div class="sc c-tras">
         <svg viewBox="0 0 320 220" preserveAspectRatio="none" aria-hidden="true">
@@ -523,4 +523,949 @@
   <canvas id="frente3d" aria-hidden="true"></canvas>
   <div class="burbuja" id="burbuja-c" aria-live="polite"></div>
   <div class="burbuja" id="burbuja-t" aria-live="polite"></div>
-  <button type="button" class="volver-inicio" id="volver-inicio
+  <button type="button" class="volver-inicio" id="volver-inicio">Volver al inicio</button>
+  <div class="base"><button type="button" id="nuevo">Soltar más flores</button></div>
+</main>
+
+<div id="iris" hidden aria-hidden="true"></div>
+
+<script>
+  // Generador pseudoaleatorio con semilla
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* =====================================================================
+     Temas de color: cada vez que se presiona "Soltar más flores" cambian el fondo,
+     el bloque y la criatura. Las flores amarillas nunca cambian.
+     ===================================================================== */
+  const TEMAS = [
+    { // rosa y morado
+      fondo: '#1B0B33', tortuga: '#7B4DFF', brillo: '255, 126, 200', acento: '#FF7EC8',
+      pasto: ['#F27DBE', '#F27DBE', '#F27DBE', '#E86AB0', '#F58FC8', '#D9539F'],
+      tierra: ['#6E3F5A', '#6E3F5A', '#5E3450', '#7F4C68', '#8A5674', '#54294A'],
+      cuerpo: '#B99BFF', oscuro: '#9A7CF0', vientre: '#EBDDFF', detalle: '#FF9AD5', mejilla: '#FF8FCB',
+      petalos: ['#FF9AD5', '#FFB3E0', '#C9A0FF', '#E58CFF']
+    },
+    { // bioma clásico de Minecraft: pasto verde, tierra y cielo celeste
+      fondo: '#78A7FF', tortuga: '#2F6FE0', brillo: '255, 255, 255', acento: '#7EDB5A', tinta: '#12341A',
+      pasto: ['#6BB34A', '#6BB34A', '#6BB34A', '#5FA340', '#7CC55A', '#528F35'],
+      tierra: ['#866043', '#866043', '#79553A', '#946B4B', '#9C7250', '#6B4A31'],
+      cuerpo: '#FF9FC8', oscuro: '#F07FB0', vientre: '#FFE3EE', detalle: '#FFFFFF', mejilla: '#FF6F9C',
+      petalos: ['#FFFFFF', '#EAF4FF', '#D6E8FF', '#FFFFFF']
+    },
+    { // menta y azul noche
+      fondo: '#0B2233', tortuga: '#1F7A9E', brillo: '90, 230, 200', acento: '#5EEAD4',
+      pasto: ['#3DD6A8', '#3DD6A8', '#3DD6A8', '#2FC096', '#5CE6BC', '#28A883'],
+      tierra: ['#3F5A6E', '#3F5A6E', '#34495C', '#4C6A80', '#587990', '#2A3E50'],
+      cuerpo: '#FFB38A', oscuro: '#F2956A', vientre: '#FFE7D6', detalle: '#FF8FA3', mejilla: '#FF7F96',
+      petalos: ['#8FF3D8', '#B8FFF0', '#9CC9FF', '#7AD8FF']
+    },
+    { // cielo azul
+      fondo: '#0F1A3D', tortuga: '#5A4BE0', brillo: '110, 160, 255', acento: '#7AA8FF',
+      pasto: ['#5BA8FF', '#5BA8FF', '#5BA8FF', '#4A93EA', '#7DBEFF', '#3B7FD4'],
+      tierra: ['#4A4E7A', '#4A4E7A', '#3E4268', '#59608E', '#666E9E', '#32365A'],
+      cuerpo: '#FF9A8A', oscuro: '#F27A6E', vientre: '#FFE0DA', detalle: '#FFD0E4', mejilla: '#FF6F91',
+      petalos: ['#A6D0FF', '#CFE5FF', '#B9A6FF', '#8FC0FF']
+    },
+    { // atardecer coral
+      fondo: '#3A1024', tortuga: '#A3204E', brillo: '255, 140, 90', acento: '#FF9A6B',
+      pasto: ['#FF8A5B', '#FF8A5B', '#FF8A5B', '#F27548', '#FFA07A', '#E0603A'],
+      tierra: ['#6B3A3A', '#6B3A3A', '#5A2E2F', '#7C4646', '#8A5252', '#4A2226'],
+      cuerpo: '#7FE0D8', oscuro: '#5BC8C0', vientre: '#E0FFFB', detalle: '#FFB3C7', mejilla: '#FF9DB5',
+      petalos: ['#FFB08A', '#FFD0B0', '#FF9AB5', '#FFC46B']
+    },
+    { // uva y magenta
+      fondo: '#2A0A2E', tortuga: '#5B2FBF', brillo: '220, 110, 255', acento: '#E07BFF',
+      pasto: ['#C15BEB', '#C15BEB', '#C15BEB', '#AD46D6', '#D37CF5', '#9536C0'],
+      tierra: ['#4E2A6B', '#4E2A6B', '#432259', '#5C3580', '#6A4090', '#341A4A'],
+      cuerpo: '#FFA3D1', oscuro: '#F07FB8', vientre: '#FFE3F1', detalle: '#9BE8FF', mejilla: '#FF7FB0',
+      petalos: ['#F1A6FF', '#D8B4FF', '#FFB3E0', '#B48CFF']
+    },
+    { // cereza
+      fondo: '#2B0A14', tortuga: '#FFC2CF', brillo: '255, 90, 120', acento: '#FF6B8B',
+      pasto: ['#E8455F', '#E8455F', '#E8455F', '#D2344E', '#F56A80', '#BC2640'],
+      tierra: ['#5E2B33', '#5E2B33', '#4E232A', '#6E353D', '#7B4149', '#3F1A20'],
+      cuerpo: '#8EC5FF', oscuro: '#6FAEF0', vientre: '#E3F1FF', detalle: '#FFD0E4', mejilla: '#FF9DB5',
+      petalos: ['#FF9AAE', '#FFC2CF', '#FFD0B0', '#FF8FA3']
+    }
+  ];
+  const rgbDe = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  // Mezcla dos colores hex (f = 0 devuelve a, f = 1 devuelve b)
+  const mezclaHex = (a, b, f) => {
+    const A = rgbDe(a), B = rgbDe(b);
+    return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * f).toString(16).padStart(2, '0')).join('');
+  };
+  // De un solo color base salen los cuatro tonos de la tortuga (piel, caparazón, cima y borde)
+  TEMAS.forEach(t => {
+    t.tPiel = mezclaHex(t.tortuga, '#FFFFFF', 0.55);
+    t.tCima = mezclaHex(t.tortuga, '#FFFFFF', 0.28);
+    t.tBorde = mezclaHex(t.tortuga, '#000000', 0.3);
+  });
+
+  /* =====================================================================
+     Flores estilo Minecraft: texturas de 16x16 píxeles generadas aquí
+     (césped rosado tipo bosque de cerezos, tierra morada y un diente de león)
+     ===================================================================== */
+  const criatura = (function construirBloque() {
+    const lienzo = (pintar, w = 16, h = 16) => {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      pintar(c.getContext('2d'));
+      return `url("${c.toDataURL()}")`;
+    };
+    const px = (g, x, y, color) => { g.fillStyle = color; g.fillRect(x, y, 1, 1); };
+
+    const flor = [
+      '................',
+      '......yYYy......',
+      '.....yYYYYy.....',
+      '....yYYyyYYy....',
+      '....YYyBByYY....',
+      '....YYyBByYY....',
+      '....yYYyyYYy....',
+      '.....yYYYYy.....',
+      '......yYYy......',
+      '.......gg.......',
+      '.......gg.......',
+      '....G..gg..g....',
+      '.....GGgg.gg....',
+      '.......gg.......',
+      '.......gg.......',
+      '.......gg.......'
+    ];
+    const paleta = { Y: '#FFD23F', y: '#F2A900', B: '#4A2C0F', g: '#4CAF62', G: '#2F7A4B' };
+
+    const raiz = document.documentElement.style;
+
+    // Césped y tierra del bloque: se vuelven a pintar con los colores de cada tema (mismo patrón de píxeles)
+    function texturasBloque(t) {
+      const r = rng(11);
+      const uno = lista => lista[Math.floor(r() * lista.length)];
+      raiz.setProperty('--tex-arriba', lienzo(g => {
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, uno(t.pasto));
+      }));
+      raiz.setProperty('--tex-lado', lienzo(g => {
+        for (let x = 0; x < 16; x++) {
+          const alto = 3 + Math.floor(r() * 3);   // el césped "gotea" sobre la tierra
+          for (let y = 0; y < 16; y++) px(g, x, y, y < alto ? uno(t.pasto) : uno(t.tierra));
+        }
+      }));
+    }
+
+    raiz.setProperty('--tex-flor', lienzo(g => {
+      flor.forEach((fila, y) => [...fila].forEach((ch, x) => { if (paleta[ch]) px(g, x, y, paleta[ch]); }));
+    }));
+
+    // [x, z, tamaño] en bloques: las flores forman un macizo en el centro y dejan un camino alrededor
+    const giro = document.querySelector('.giro');
+    [[0, 0, 1.5], [-0.45, -0.42, 1.15], [0.4, -0.42, 1.2], [-0.42, 0.45, 1.05], [0.05, 0.42, 1.15]].forEach(([x, z, k]) => {
+      for (const r of [45, -45]) {
+        const d = document.createElement('div');
+        d.className = 'flor';
+        d.style.cssText = `--x:${x};--z:${z};--k:${k};--r:${r}deg`;
+        giro.appendChild(d);
+      }
+    });
+
+    /* ---------- Criatura original: camina alrededor de las flores y saluda al frente ---------- */
+    const hijos = (padre, ...lista) => { lista.forEach(h => padre.appendChild(h)); return padre; };
+    const parte = () => { const e = document.createElement('div'); e.className = 'parte'; return e; };
+    const caja = (w, h, d, color, caras = {}) => {
+      const e = document.createElement('div');
+      e.className = 'caja';
+      e.style.cssText = `--w:${w};--h:${h};--d:${d};--c:${color}`;
+      for (const cl of ['cf', 'cb', 'cd', 'ci', 'ca', 'cx']) {
+        const f = document.createElement('i');
+        f.className = cl;
+        if (caras[cl]) f.style.cssText = caras[cl];
+        e.appendChild(f);
+      }
+      return e;
+    };
+    const poner = (el, x, y, z, extra = '') => {
+      el.style.transform = `translate3d(calc(var(--u) * ${x}), calc(var(--u) * ${y}), calc(var(--u) * ${z}))${extra ? ' ' + extra : ''}`;
+    };
+
+    // Colores de la criatura: variables CSS que cambia cada tema
+    const CUERPO = 'var(--cuerpo)', OSCURO = 'var(--oscuro)', VIENTRE = 'var(--vientre)', ROSA = 'var(--acento)';
+
+    // Cara de 8x8 píxeles: ojos con brillo, mejillas rosadas y boquita
+    const mapaCara = ['LLLLLLLL', 'LLLLLLLL', 'LWELLWEL', 'LEELLEEL', 'CCLLLLCC', 'CCLMMLCC', 'LLLLLLLL', 'LLLLLLLL'];
+    const texCara = t => {
+      const colores = { L: t.cuerpo, W: '#FFFFFF', E: '#2A1250', C: t.mejilla, M: '#2A1250' };
+      return lienzo(g => {
+        mapaCara.forEach((fila, y) => [...fila].forEach((ch, x) => px(g, x, y, colores[ch])));
+      }, 8, 8);
+    };
+
+    const pataI = hijos(parte(), caja(0.16, 0.25, 0.16, OSCURO));
+    const pataD = hijos(parte(), caja(0.16, 0.25, 0.16, OSCURO));
+    const cola = hijos(parte(), caja(0.16, 0.16, 0.16, ROSA));
+    const torso = hijos(parte(), caja(0.42, 0.4, 0.26, CUERPO, { cf: `--c:${VIENTRE}` }));
+    const brazoI = hijos(parte(), caja(0.12, 0.34, 0.12, CUERPO));
+    const brazoD = hijos(parte(), caja(0.12, 0.34, 0.12, CUERPO));
+
+    const cajaCabeza = caja(0.5, 0.42, 0.42, CUERPO, {
+      cf: 'background-size:100% 100%;image-rendering:pixelated'
+    });
+    const caraCabeza = cajaCabeza.children[0];   // la cara frontal lleva la textura pixelada
+    const cabeza = hijos(parte(), cajaCabeza);
+    for (const lado of [-1, 1]) {
+      const oreja = hijos(parte(), caja(0.14, 0.16, 0.06, CUERPO, { cf: `--c:${ROSA}` }));
+      poner(oreja, 0.16 * lado, -0.16, -0.02);
+      cabeza.appendChild(oreja);
+    }
+    // Una florecita amarilla en la cabeza
+    for (const r of [45, -45]) {
+      const f = document.createElement('div');
+      f.className = 'flor';
+      f.style.cssText = `--x:0;--z:0.14;--k:0.42;--r:${r}deg`;
+      cabeza.appendChild(f);
+    }
+
+    const tronco = hijos(parte(), torso, brazoI, brazoD, cabeza);
+    const sombraC = document.createElement('div');
+    sombraC.className = 'sombrita';
+    const criaturaRaiz = hijos(parte(), sombraC, pataI, pataD, cola, tronco);
+    giro.appendChild(criaturaRaiz);
+
+    poner(torso, 0, -0.65, 0);
+    poner(cola, 0, -0.36, -0.2);
+
+    /* ---------- Tortuguita: se queda en una esquina, mira siempre al frente y saluda ---------- */
+    const TP = 'var(--t-piel)', TC = 'var(--t-cap)', TT = 'var(--t-cima)', TB = 'var(--t-borde)';
+    const TX = 1.12, TZ = 1.12;   // esquina delantera derecha del bloque
+
+    const tPataTI = hijos(parte(), caja(0.13, 0.1, 0.13, TP));
+    const tPataTD = hijos(parte(), caja(0.13, 0.1, 0.13, TP));
+    const tPataDI = hijos(parte(), caja(0.13, 0.1, 0.13, TP));
+    const tAleta = hijos(parte(), caja(0.11, 0.24, 0.11, TP));   // la que saluda
+    const tPlastron = hijos(parte(), caja(0.5, 0.14, 0.56, TP));
+    const tDomo = hijos(parte(), caja(0.48, 0.14, 0.5, TC));
+    const cajaCima = caja(0.34, 0.08, 0.36, TT, { ca: 'background-size:100% 100%;image-rendering:pixelated' });
+    const tCima = hijos(parte(), cajaCima);
+    const cajaCabezaT = caja(0.24, 0.2, 0.24, TP, { cf: 'background-size:100% 100%;image-rendering:pixelated' });
+    const tCabeza = hijos(parte(), cajaCabezaT);
+    const tCola = hijos(parte(), caja(0.08, 0.08, 0.1, TP));
+    const caraTortuga = cajaCabezaT.children[0];     // cara frontal con ojos
+    const topeCaparazon = cajaCima.children[4];      // cara superior con las placas del caparazón
+
+    const tTronco = hijos(parte(), tPlastron, tDomo, tCima, tCabeza, tCola, tAleta);
+    const sombraT = document.createElement('div');
+    sombraT.className = 'sombrita';
+    const tortugaRaiz = hijos(parte(), sombraT, tPataTI, tPataTD, tPataDI, tTronco);
+    giro.appendChild(tortugaRaiz);
+
+    poner(tPataTI, -0.17, -0.1, -0.17);
+    poner(tPataTD, 0.17, -0.1, -0.17);
+    poner(tPataDI, -0.17, -0.1, 0.17);
+    poner(tPlastron, 0, -0.24, 0);
+    poner(tDomo, 0, -0.38, 0);
+    poner(tCima, 0, -0.46, 0);
+    poner(tCola, 0, -0.14, -0.31);
+
+    // Cara de 8x8 y placas del caparazón, pintadas con los colores del tema
+    const mapaCaraT = ['PPPPPPPP', 'PPPPPPPP', 'PEWPPWEP', 'PEEPPEEP', 'PPPPPPPP', 'PCPPPPCP', 'PPPMMPPP', 'PPPPPPPP'];
+    const texCaraT = t => {
+      const colores = { P: t.tPiel, E: '#2A1250', W: '#FFFFFF', C: '#FF8FB0', M: '#2A1250' };
+      return lienzo(g => {
+        mapaCaraT.forEach((fila, y) => [...fila].forEach((ch, x) => px(g, x, y, colores[ch])));
+      }, 8, 8);
+    };
+    const texCaparazon = t => lienzo(g => {
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+        px(g, x, y, (x === 2 || x === 5 || y === 2 || y === 5) ? t.tBorde : t.tCima);
+      }
+    }, 8, 8);
+
+    /* ---------- Globos de diálogo ---------- */
+    // Un punto invisible sobre la cabeza de cada personaje: su posición en pantalla dice dónde poner el globo
+    const anclaC = document.createElement('div');
+    anclaC.className = 'ancla';
+    cabeza.appendChild(anclaC);
+    poner(anclaC, 0, -0.55, 0);
+    const anclaT = document.createElement('div');
+    anclaT.className = 'ancla';
+    tCabeza.appendChild(anclaT);
+    poner(anclaT, 0, -0.22, 0);
+
+    const bC = { el: document.getElementById('burbuja-c'), ancla: anclaC, activa: false, t1: 0, t2: 0, pos: null };
+    const bT = { el: document.getElementById('burbuja-t'), ancla: anclaT, activa: false, t1: 0, t2: 0, pos: null };
+
+    function decir(b, texto, retardo, duracion = 3800) {
+      clearTimeout(b.t1); clearTimeout(b.t2);
+      b.t1 = setTimeout(() => {
+        b.el.textContent = texto;
+        b.el.classList.add('visible');
+        b.activa = true;
+        actualizarBurbujas();
+      }, retardo);
+      b.t2 = setTimeout(() => { b.el.classList.remove('visible'); b.activa = false; }, retardo + duracion);
+    }
+
+    function callarTodo() {
+      for (const b of [bC, bT]) { clearTimeout(b.t1); clearTimeout(b.t2); b.el.classList.remove('visible'); b.activa = false; }
+    }
+
+    function actualizarBurbujas() {
+      const activas = [];
+      for (const b of [bC, bT]) {
+        if (!b.activa) continue;
+        const r = b.ancla.getBoundingClientRect();
+        const ancho = b.el.offsetWidth, alto = b.el.offsetHeight;
+        const cx = r.left + r.width / 2;
+        const x = Math.min(Math.max(cx - ancho / 2, 8), Math.max(innerWidth - ancho - 8, 8));
+        b.pos = { x, y: Math.max(r.top - alto - 12, 60), ancho, alto, cola: Math.min(Math.max(cx - x, 16), ancho - 16) };
+        activas.push(b);
+      }
+      // Si los dos globos se tapan, el de la tortuga sube
+      if (activas.length === 2) {
+        const [a, c] = activas;
+        const choca = a.pos.x < c.pos.x + c.pos.ancho && c.pos.x < a.pos.x + a.pos.ancho &&
+                      a.pos.y < c.pos.y + c.pos.alto && c.pos.y < a.pos.y + a.pos.alto;
+        if (choca) c.pos.y = Math.max(a.pos.y - c.pos.alto - 8, 8);
+      }
+      for (const b of activas) {
+        b.el.style.transform = `translate(${b.pos.x}px, ${b.pos.y}px)`;
+        b.el.style.setProperty('--cola', b.pos.cola + 'px');
+      }
+    }
+
+    const RP = 1.2;     // radio del camino, en bloques
+    const OM = 0.46;    // velocidad angular al caminar (rad/s)
+    const norm = a => Math.atan2(Math.sin(a), Math.cos(a));
+    const lim = (v, a, b) => Math.min(Math.max(v, a), b);
+
+    // El camino es un círculo que se encoge un poco al pasar junto a la tortuga para no chocar con ella
+    const THC = Math.atan2(TX, TZ);
+    const radio = th => RP - 0.2 * Math.exp(-Math.pow(norm(th - THC) / 0.6, 2));
+    const rumbo = th => {   // hacia dónde mira quien camina por ese camino
+      const e = 0.01, r = radio(th), dr = (radio(th + e) - radio(th - e)) / (2 * e);
+      return Math.atan2(dr * Math.sin(th) + r * Math.cos(th), dr * Math.cos(th) - r * Math.sin(th));
+    };
+    const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let corre = false, raf = 0, t0 = 0, tPrev = 0, phi = 0, theta = 0, psi = 0, fase = 0, amp = 0, onda = 0;
+    let estado = 'espera', tEstado = 0;
+
+    function pintarPose(t) {
+      giro.style.transform = `rotateY(${phi}rad)`;
+      const rc = radio(theta);
+      poner(criaturaRaiz, rc * Math.sin(theta), 0, rc * Math.cos(theta), `rotateY(${psi}rad)`);
+
+      // Tortuga: contrarresta el giro del bloque para mirar siempre al frente, y agita una aleta
+      poner(tortugaRaiz, TX, 0, TZ, `rotateY(${-phi}rad)`);
+      poner(tTronco, 0, -Math.abs(Math.sin(t * 3)) * 0.012, 0);
+      poner(tAleta, 0.27, -0.2, 0.17, `rotateZ(${-128 + Math.sin(t * 8) * 22}deg)`);
+      poner(tCabeza, 0, -0.3, 0.34, `rotateZ(${Math.sin(t * 2) * 6}deg)`);
+
+      const sw = Math.sin(fase) * amp;
+      poner(pataI, -0.11, -0.25, 0, `rotateX(${sw * 38}deg)`);
+      poner(pataD, 0.11, -0.25, 0, `rotateX(${-sw * 38}deg)`);
+
+      const rebote = Math.abs(Math.sin(fase)) * 0.035 * amp + Math.abs(Math.sin(t * 4.5)) * 0.02 * onda;
+      poner(tronco, 0, -rebote, 0);
+      poner(brazoI, -0.27, -0.62, 0, `rotateX(${-sw * 32}deg)`);
+      // El brazo derecho sube y se agita al saludar
+      poner(brazoD, 0.27, -0.62, 0,
+        `rotateX(${sw * 32 * (1 - onda)}deg) rotateZ(${-135 * onda + Math.sin(t * 9) * 20 * onda}deg)`);
+      poner(cabeza, 0, -1.07, 0,
+        `rotateX(${Math.sin(fase * 2) * 3 * amp}deg) rotateZ(${Math.sin(t * 3) * 5 * onda}deg)`);
+    }
+
+    function cuadro(ts) {
+      if (!corre) return;
+      const t = (ts - t0) / 1000;
+      const dt = lim(t - tPrev, 0, 0.05);
+      tPrev = t;
+      phi = t * (Math.PI * 2 / 26);   // el bloque gira una vuelta cada 26 s
+      tEstado += dt;
+
+      // Ciclo: espera, saluda al frente, camina un rato, se gira hacia el frente y vuelve a saludar
+      let objetivo = -phi, mover = false, saluda = false;
+      if (estado === 'espera' && t > 1.4) { estado = 'saluda'; tEstado = 0; }
+      if (estado === 'camina') {
+        objetivo = rumbo(theta); mover = true;
+        if (tEstado > 6.5) { estado = 'gira'; tEstado = 0; }
+      } else if (estado === 'gira') {
+        if (Math.abs(norm(objetivo - psi)) < 0.12 || tEstado > 1.6) { estado = 'saluda'; tEstado = 0; }
+      } else if (estado === 'saluda') {
+        saluda = true;
+        if (tEstado > 2.6) { estado = 'camina'; tEstado = 0; }
+      }
+
+      const d = norm(objetivo - psi);
+      psi += lim(d, -5 * dt, 5 * dt);
+      let anda = false;
+      if (mover && Math.abs(d) < 0.5) { theta += OM * dt; fase += dt * 7; anda = true; }
+      amp += ((anda ? 1 : 0) - amp) * Math.min(1, dt * 8);
+      onda += ((saluda ? 1 : 0) - onda) * Math.min(1, dt * 6);
+
+      pintarPose(t);
+      if (bC.activa || bT.activa) actualizarBurbujas();
+      raf = requestAnimationFrame(cuadro);
+    }
+
+    return {
+      detener() { corre = false; cancelAnimationFrame(raf); callarTodo(); },
+      // La criatura habla primero y la tortuga le contesta un momento después
+      hablar(fraseCriatura, fraseTortuga) {
+        decir(bC, fraseCriatura, 250);
+        decir(bT, fraseTortuga, 1300);
+      },
+      // Repinta las texturas de píxeles (bloque y cara) con los colores del tema
+      tema(t) {
+        texturasBloque(t);
+        caraCabeza.style.backgroundImage = texCara(t);
+        caraTortuga.style.backgroundImage = texCaraT(t);
+        topeCaparazon.style.backgroundImage = texCaparazon(t);
+      },
+      iniciar() {
+        callarTodo();
+        estado = 'espera'; tEstado = 0; theta = 0; psi = 0; fase = 0; amp = 0; onda = 0; tPrev = 0; phi = 0;
+        t0 = performance.now();
+        if (calmo) { onda = 1; pintarPose(0); return; }   // sin movimiento: se queda saludando
+        if (!corre) { corre = true; raf = requestAnimationFrame(cuadro); }
+      }
+    };
+  })();
+
+  /* =====================================================================
+     Escena 3D de fondo: flores amarillas flotando con perspectiva real.
+     Cada pétalo se proyecta punto por punto, así las flores se inclinan,
+     giran y se acortan como objetos de verdad. Sin librerías externas.
+     ===================================================================== */
+  const escena = (() => {
+    const cont = document.getElementById('flores');
+    const cvF = document.getElementById('fondo3d');   // detrás del bloque
+    const cvP = document.getElementById('frente3d');  // delante del bloque
+    const gF = cvF.getContext('2d');
+    const gP = cvP.getContext('2d');
+    const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const ZPIV = 12;    // punto sobre el que gira toda la escena
+    const ZTARJ = 7;    // las flores más cercanas que esto pasan por delante del bloque
+    const BG = [27, 11, 51], BGdest = [27, 11, 51];   // BG se acerca suavemente a BGdest al cambiar de tema
+    const SOL = [255, 210, 63], MIEL = [242, 169, 0];
+    const CENTRO = [74, 44, 15], PUNTO = [138, 90, 27];
+    const PETALOS = ['#FF9AD5', '#FFB3E0', '#C9A0FF', '#E58CFF'];
+    const LUZ = (() => { const v = [-0.35, 0.55, -0.75], m = Math.hypot(...v); return v.map(a => a / m); })();
+
+    let W = 0, H = 0, F = 1, dpr = 1, brillo = null, brilloRGB = '255,126,200';
+    let flores = [], polen = [];
+    let corriendo = false, raf = 0, t0 = 0, tAhora = 0, tPrev = 0, intro0 = 0;
+    let yaw = 0, pitch = 0;
+    let ptrX = null, ptrY = null, incX = 0, incY = 0, incBase = null;
+
+    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+    const easeOutBack = x => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+
+    const mezcla = (a, b, t, k) => {
+      const c = i => Math.min(255, a[i] * k) * (1 - t) + b[i] * t;
+      return `rgb(${c(0) | 0},${c(1) | 0},${c(2) | 0})`;
+    };
+
+    // Matrices 3x3 (fila por fila)
+    const mul = (A, B) => {
+      const o = new Array(9);
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++)
+        o[i * 3 + j] = A[i * 3] * B[j] + A[i * 3 + 1] * B[3 + j] + A[i * 3 + 2] * B[6 + j];
+      return o;
+    };
+    const matRx = a => { const c = Math.cos(a), s = Math.sin(a); return [1, 0, 0, 0, c, -s, 0, s, c]; };
+    const matRy = a => { const c = Math.cos(a), s = Math.sin(a); return [c, 0, s, 0, 1, 0, -s, 0, c]; };
+    const matRz = a => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1]; };
+
+    function crearFlor(rand) {
+      const n = 9 + Math.floor(rand() * 4);
+      const z = 4.5 + Math.pow(rand(), 1.15) * 15.5;
+      const R = (0.85 + rand() * 0.7) * (z < ZTARJ ? 0.75 : 1);
+      const paso = Math.PI * 2 / n;
+
+      // Un pétalo son 5 puntos 3D (2 de control + punta + 2 de control); la punta se levanta para dar forma de copa
+      const capa = (radio, giro, dz) => {
+        const base = [[.36, -.3, -.05], [.36, -.95, -.14], [0, -1, -.2], [-.36, -.95, -.14], [-.36, -.3, -.05]];
+        const pts = new Float32Array(n * 15);
+        for (let k = 0; k < n; k++) {
+          const a = k * paso + giro, c = Math.cos(a), s = Math.sin(a);
+          base.forEach((p, j) => {
+            const x = p[0] * radio, y = p[1] * radio, zz = p[2] * radio + dz;
+            pts[k * 15 + j * 3] = x * c - y * s;
+            pts[k * 15 + j * 3 + 1] = x * s + y * c;
+            pts[k * 15 + j * 3 + 2] = zz;
+          });
+        }
+        return pts;
+      };
+
+      const puntos = [];
+      for (let i = 0; i < 12; i++) {
+        const a = rand() * 6.2832, d = Math.sqrt(rand()) * R * 0.22;
+        puntos.push([Math.cos(a) * d, Math.sin(a) * d, R * 0.028]);
+      }
+
+      let xn = (rand() * 2 - 1) * 1.1;
+      // las flores cercanas se apartan del centro para no tapar el bloque
+      if (z < ZTARJ && Math.abs(xn) < 0.5) xn = (xn < 0 ? -1 : 1) * (0.55 + rand() * 0.5);
+
+      return {
+        n, R, z, xn, yn: rand() * 2 - 1,
+        atras: capa(R, paso / 2, 0), frente: capa(R * 0.86, 0, -R * 0.05), puntos,
+        vy: 0.25 + rand() * 0.35, sw: rand() * 6.28, swA: 0.25 + rand() * 0.45, swW: 0.3 + rand() * 0.4,
+        ax: 0.4 + rand() * 0.7, ay: 0.4 + rand() * 0.7, wx: 0.3 + rand() * 0.5, wy: 0.3 + rand() * 0.5,
+        px: rand() * 6.28, py: rand() * 6.28, r0: rand() * 6.28, wz: (rand() - 0.5) * 0.6,
+        delay: rand() * 0.9, tono: 0.92 + rand() * 0.08
+      };
+    }
+
+    function generar() {
+      const rand = rng(Math.floor(Math.random() * 1e9));
+      flores = Array.from({ length: W < 600 ? 30 : 46 }, () => crearFlor(rand));
+      // Pétalos cuadrados rosas y lilas que caen despacio, como en un bosque de cerezos
+      polen = Array.from({ length: W < 600 ? 50 : 80 }, () => ({
+        xn: (rand() * 2 - 1) * 1.1, yn: rand() * 2 - 1, z: 4 + rand() * 18,
+        vy: -(0.2 + rand() * 0.35), ph: rand() * 6.28, r: 0.03 + rand() * 0.05,
+        ci: Math.floor(rand() * PETALOS.length)
+      }));
+    }
+
+    function crearBrillo() {
+      brillo = gF.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.7);
+      brillo.addColorStop(0, `rgba(${brilloRGB},0.14)`);
+      brillo.addColorStop(1, `rgba(${brilloRGB},0)`);
+    }
+
+    function medir() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = cont.clientWidth; H = cont.clientHeight;
+      for (const c of [cvF, cvP]) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
+      F = 0.62 * H;
+      crearBrillo();
+    }
+
+    // Posición, orientación y apertura de una flor en el instante t
+    function estado(fl, t, tin, S) {
+      const e = easeOutBack(clamp((tin - fl.delay) / 1.5, 0, 1));
+      if (e < 0.02) return null;
+
+      const z = fl.z + Math.sin(t * 0.4 + fl.sw) * 0.5;
+      const span = (H / 2) * z / F + 4;
+      const y0 = ((((fl.yn * span + fl.vy * t + span) % (2 * span)) + 2 * span) % (2 * span)) - span;
+      const x0 = fl.xn * (W / 2) * z / F + Math.sin(t * fl.swW + fl.sw) * fl.swA;
+
+      // Al empezar salen todas desde el centro y se abren
+      const dx = x0 * e, dy = y0 * e, dz = z - ZPIV;
+      const cv = [
+        S[0] * dx + S[1] * dy + S[2] * dz,
+        S[3] * dx + S[4] * dy + S[5] * dz,
+        S[6] * dx + S[7] * dy + S[8] * dz + ZPIV
+      ];
+
+      const rx = fl.ax * Math.sin(t * fl.wx + fl.px);
+      const ry = fl.ay * Math.sin(t * fl.wy + fl.py);
+      const rz = fl.r0 + fl.wz * t + (1 - Math.min(e, 1)) * 5;
+      const R = mul(S, mul(matRy(ry), mul(matRx(rx), matRz(rz))));
+      return { fl, cv, R, s: e };
+    }
+
+    const px = new Float32Array(2);
+    const v = new Float32Array(10);
+
+    function dibujarFlor(g, it) {
+      const { fl, cv, R, s } = it;
+      if (cv[2] < 0.8) return;
+
+      // Niebla: lo lejano se funde con el fondo morado
+      const fog = clamp((cv[2] - 6) / 16, 0, 0.7);
+      // Hacia dónde mira la copa de la flor, para iluminarla y decidir qué capa va encima
+      const nx = -R[2], ny = -R[5], nz = -R[8];
+      const k = (0.72 + 0.28 * Math.abs(nx * LUZ[0] + ny * LUZ[1] + nz * LUZ[2])) * fl.tono;
+      const cA = mezcla(MIEL, BG, fog, k), cB = mezcla(SOL, BG, fog, k);
+      const capas = nz < 0 ? [[fl.atras, cA], [fl.frente, cB]] : [[fl.frente, cB], [fl.atras, cA]];
+
+      const proj = (x, y, z) => {
+        const vx = s * (R[0] * x + R[1] * y + R[2] * z) + cv[0];
+        const vy = s * (R[3] * x + R[4] * y + R[5] * z) + cv[1];
+        const vz = s * (R[6] * x + R[7] * y + R[8] * z) + cv[2];
+        const q = F / Math.max(vz, 0.3);
+        px[0] = W / 2 + vx * q; px[1] = H / 2 - vy * q;
+      };
+
+      proj(0, 0, 0);
+      const bx = px[0], by = px[1];
+      g.lineWidth = 1;
+      g.lineJoin = 'round';
+      g.strokeStyle = `rgba(150,85,0,${(0.4 * (1 - fog)).toFixed(2)})`;
+
+      for (const [pts, color] of capas) {
+        g.fillStyle = color;
+        for (let kk = 0; kk < fl.n; kk++) {
+          const o = kk * 15;
+          for (let j = 0; j < 5; j++) {
+            proj(pts[o + j * 3], pts[o + j * 3 + 1], pts[o + j * 3 + 2]);
+            v[j * 2] = px[0]; v[j * 2 + 1] = px[1];
+          }
+          g.beginPath();
+          g.moveTo(bx, by);
+          g.bezierCurveTo(v[0], v[1], v[2], v[3], v[4], v[5]);
+          g.bezierCurveTo(v[6], v[7], v[8], v[9], bx, by);
+          g.fill();
+          g.stroke();
+        }
+      }
+
+      // Centro: un disco dibujado sobre el plano inclinado de la flor
+      const zc = -fl.R * 0.08;
+      proj(0, 0, zc); const ox = px[0], oy = px[1];
+      proj(1, 0, zc); const ax = px[0] - ox, ay = px[1] - oy;
+      proj(0, 1, zc); const cx = px[0] - ox, cy = px[1] - oy;
+      g.save();
+      g.transform(ax, ay, cx, cy, ox, oy);
+      g.fillStyle = mezcla(CENTRO, BG, fog, k);
+      g.beginPath(); g.arc(0, 0, fl.R * 0.3, 0, 6.2832); g.fill();
+      g.fillStyle = mezcla(PUNTO, BG, fog, k);
+      for (const d of fl.puntos) { g.beginPath(); g.arc(d[0], d[1], d[2], 0, 6.2832); g.fill(); }
+      g.restore();
+    }
+
+    function pintar(t) {
+      gF.setTransform(dpr, 0, 0, dpr, 0, 0);
+      gP.setTransform(dpr, 0, 0, dpr, 0, 0);
+      gF.clearRect(0, 0, W, H);
+      gP.clearRect(0, 0, W, H);
+      gF.fillStyle = brillo; gF.fillRect(0, 0, W, H);
+
+      const tin = t - intro0;
+      const S = mul(matRy(yaw), matRx(pitch));
+
+      // Pétalos cuadrados a distintas profundidades
+      gF.globalAlpha = 0.85 * clamp(tin / 1.5, 0, 1);
+      for (const p of polen) {
+        const span = (H / 2) * p.z / F + 3;
+        const y = ((((p.yn * span + p.vy * t + span) % (2 * span)) + 2 * span) % (2 * span)) - span;
+        const x = p.xn * (W / 2) * p.z / F + Math.sin(t * 0.5 + p.ph) * 0.3;
+        const dz = p.z - ZPIV;
+        const vx = S[0] * x + S[1] * y + S[2] * dz;
+        const vy = S[3] * x + S[4] * y + S[5] * dz;
+        const vz = S[6] * x + S[7] * y + S[8] * dz + ZPIV;
+        if (vz < 0.5) continue;
+        const q = F / vz;
+        const lado = Math.max(2, Math.round(p.r * (0.8 + 0.2 * Math.sin(t * 2 + p.ph)) * q * 2.2));
+        gF.fillStyle = PETALOS[p.ci];
+        gF.fillRect(Math.round(W / 2 + vx * q - lado / 2), Math.round(H / 2 - vy * q - lado / 2), lado, lado);
+      }
+      gF.globalAlpha = 1;
+
+      // Flores ordenadas de lejos a cerca
+      const lista = [];
+      for (const fl of flores) { const it = estado(fl, t, tin, S); if (it) lista.push(it); }
+      lista.sort((a, b) => b.cv[2] - a.cv[2]);
+      for (const it of lista) dibujarFlor(it.cv[2] < ZTARJ ? gP : gF, it);
+    }
+
+    function bucle(ts) {
+      if (!corriendo) return;
+      tAhora = (ts - t0) / 1000;
+      const dt = Math.min(Math.max(tAhora - tPrev, 0), 0.05);
+      tPrev = tAhora;
+
+      // La escena sigue al dedo, al ratón o a la inclinación del teléfono, más un vaivén lento propio
+      const ox = ptrX !== null ? ptrX : incX, oy = ptrY !== null ? ptrY : incY;
+      const objYaw = ox * 0.9 + 0.14 * Math.sin(tAhora * 0.22);
+      const objPit = -oy * 0.5 + 0.06 * Math.sin(tAhora * 0.17 + 1);
+      const a = Math.min(1, dt * 3);
+      yaw += (objYaw - yaw) * a;
+      pitch += (objPit - pitch) * a;
+
+      const ab = Math.min(1, dt * 5);
+      for (let i = 0; i < 3; i++) BG[i] += (BGdest[i] - BG[i]) * ab;
+
+      pintar(tAhora);
+      raf = requestAnimationFrame(bucle);
+    }
+
+    // Entradas de usuario
+    const mover = e => {
+      const r = cont.getBoundingClientRect();
+      ptrX = clamp((e.clientX - r.left) / r.width - 0.5, -0.5, 0.5);
+      ptrY = clamp((e.clientY - r.top) / r.height - 0.5, -0.5, 0.5);
+    };
+    const soltar = () => { ptrX = null; ptrY = null; };
+    cont.addEventListener('pointermove', mover);
+    cont.addEventListener('pointerdown', mover);
+    cont.addEventListener('pointerup', soltar);
+    cont.addEventListener('pointercancel', soltar);
+    cont.addEventListener('pointerleave', soltar);
+
+    // Inclinar el teléfono mueve la vista (en iOS requiere permiso y simplemente no se activa)
+    window.addEventListener('deviceorientation', e => {
+      if (e.gamma == null || e.beta == null) return;
+      if (!incBase) incBase = { g: e.gamma, b: e.beta };
+      incX = clamp((e.gamma - incBase.g) / 60, -0.5, 0.5);
+      incY = clamp((e.beta - incBase.b) / 60, -0.5, 0.5);
+    });
+
+    window.addEventListener('resize', () => {
+      if (cont.hidden || !W) return;
+      medir();
+      if (calmo) pintar(6);
+    });
+
+    return {
+      detener() { corriendo = false; cancelAnimationFrame(raf); },
+      tema(t) {
+        const c = rgbDe(t.fondo);
+        for (let i = 0; i < 3; i++) BGdest[i] = c[i];
+        PETALOS.splice(0, PETALOS.length, ...t.petalos);
+        brilloRGB = t.brillo.replace(/\s/g, '');
+        if (W) crearBrillo();
+        if (!corriendo) { for (let i = 0; i < 3; i++) BG[i] = c[i]; if (W && calmo) pintar(6); }
+      },
+      iniciar() {
+        medir();
+        generar();
+        yaw = pitch = 0;
+        t0 = performance.now(); tAhora = 0; tPrev = 0;
+        if (calmo) { intro0 = -10; pintar(6); return; }
+        intro0 = 0.75;          // las flores estallan justo cuando el círculo rosado termina de cerrarse
+        if (!corriendo) { corriendo = true; raf = requestAnimationFrame(bucle); }
+      },
+      reiniciar() {
+        generar();
+        if (calmo) { pintar(6); return; }
+        intro0 = tAhora + 0.05;
+      }
+    };
+  })();
+
+  /* Pixel art de la carta: la carita de la criatura original y estrellitas, dibujadas con cuadritos */
+  (function pixelArtDeLaCarta() {
+    const carita = ['.LL....LL.', '.LP....PL.', 'LLLLLLLLLL', 'LLLLLLLLLL', 'LWELLLLWEL',
+                    'LEELLLLEEL', 'CCLLLLLLCC', 'CCLLMMLLCC', 'LLLLLLLLLL', '.LLLLLLLL.'];
+    const estrella = ['..#..', '.###.', '#####', '.###.', '..#..'];
+    const colores = { L: '#C9A0FF', P: '#FF9AD5', E: '#2A1250', W: '#FFFFFF', C: '#FF8FCB', M: '#2A1250' };
+    const cuadritos = (mapa, unico) => mapa.map((fila, y) => [...fila].map((ch, x) => ch === '.' ? '' :
+      `<rect x="${x}" y="${y}" width="1.03" height="1.03" fill="${unico || colores[ch]}"/>`).join('')).join('');
+    document.querySelectorAll('[data-carita]').forEach(g => { g.innerHTML = cuadritos(carita); });
+    document.querySelectorAll('[data-estrella]').forEach(g => { g.innerHTML = cuadritos(estrella, g.getAttribute('fill')); });
+  })();
+
+  /* =====================================================================
+     Pantalla de la carta: gira sin parar en un espacio con chispas; al tocarla
+     se pone de frente, abre la solapa, sale la carta, se acerca hasta llenar la
+     pantalla y da paso a la pregunta.
+     ===================================================================== */
+  const escenaSobre = (() => {
+    const raiz = document.getElementById('sobre');
+    const giro = document.getElementById('giro-sobre');
+    const solapa = document.getElementById('solapa');
+    const pliego = document.getElementById('pliego');
+    const nube = document.getElementById('nube-sobre');
+    const pista = document.getElementById('pista-sobre');
+    const boton = document.getElementById('abrir-sobre');
+    const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const VUELTA = Math.PI * 2;
+    const E = n => `calc(var(--e) * ${n})`;      // n unidades de tamaño de la carta
+    const suave = p => p * p * (3 - 2 * p);
+
+    let raf = 0, corre = false, t0 = 0, tPrev = 0;
+    let ang = 0, auto = true, abre = 0, sube = 0, zoom = 0, bloqueado = false;
+
+    // Chispas cuadradas repartidas en el espacio, fuera del volumen de la carta
+    (function chispas() {
+      const r = rng(5);
+      const colores = ['#FF9AD5', '#FFB3E0', '#C9A0FF', '#FFFFFF', '#E58CFF'];
+      let n = 0;
+      while (n < 46) {
+        const x = (r() * 2 - 1) * 5, y = (r() * 2 - 1) * 4, z = (r() * 2 - 1) * 4;
+        if (Math.abs(x) < 2.2 && Math.abs(y) < 1.7 && Math.abs(z) < 0.8) continue;
+        const lado = r() < 0.25 ? 10 : 6;
+        const c = document.createElement('i');
+        c.className = 'chispa';
+        c.style.cssText = `width:${lado}px;height:${lado}px;left:${-lado / 2}px;top:${-lado / 2}px;` +
+          `background:${colores[Math.floor(r() * colores.length)]};transform:translate3d(${E(x)},${E(y)},${E(z)})`;
+        nube.appendChild(c);
+        n++;
+      }
+    })();
+
+    function pintar(t) {
+      const z = zoom;
+      const zEase = Math.pow(z, 2.2);                     // el acercamiento arranca despacio y se acelera
+      const inclina = -12 * (1 - suave(z));
+      const flota = Math.sin(t * 1.6) * 0.06 * (1 - z);
+      giro.style.transform = `translateY(${E(flota)}) rotateX(${inclina}deg) rotateY(${ang}rad)`;
+
+      // La solapa gira sobre su borde de arriba y termina detrás de la carta
+      const pa = suave(abre);
+      solapa.style.transform = `translate3d(0, ${E(-1.1)}, ${E(0.06 - 0.14 * pa)}) rotateX(${180 * pa}deg)`;
+
+      // La carta sube, y al acercarse vuelve al centro de la pantalla
+      const y = -1.5 * suave(sube) * (1 - z);
+      pliego.style.transform = `translate3d(0, ${E(y)}, ${1050 * zEase}px)`;
+
+      nube.style.transform = `rotateY(${t * 0.12}rad) rotateX(${Math.sin(t * 0.2) * 0.15}rad)`;
+    }
+
+    function bucle(ts) {
+      if (!corre) return;
+      const t = (ts - t0) / 1000;
+      const dt = Math.min(Math.max(t - tPrev, 0), 0.05);
+      tPrev = t;
+      if (auto) ang += dt * 0.9;
+      pintar(t);
+      raf = requestAnimationFrame(bucle);
+    }
+
+    const tween = (dur, f) => new Promise(res => {
+      const ini = performance.now();
+      const paso = ts => {
+        const p = Math.min(Math.max((ts - ini) / dur, 0), 1);
+        f(p);
+        if (p < 1) requestAnimationFrame(paso); else res();
+      };
+      requestAnimationFrame(paso);
+    });
+
+    async function abrir() {
+      if (bloqueado) return;
+      bloqueado = true;
+      if (calmo) { mostrar('inicio'); return; }
+      pista.classList.add('oculta');
+
+      // 1) se pone de frente, 2) abre la solapa, 3) asoma la carta, 4) se acerca hasta llenar la pantalla
+      auto = false;
+      const a0 = ang;
+      let a1 = Math.ceil(a0 / VUELTA) * VUELTA;
+      if (a1 - a0 < 1) a1 += VUELTA;
+      await tween(900, p => { ang = a0 + (a1 - a0) * suave(p); });
+      await tween(650, p => { abre = p; });
+      await tween(800, p => { sube = p; });
+      await tween(1000, p => { zoom = p; });
+
+      // La pregunta ya queda debajo; la carta se desvanece y la deja ver
+      pantallas.inicio.hidden = false;
+      await raiz.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: 'forwards' }).finished;
+      mostrar('inicio');
+    }
+    boton.addEventListener('click', abrir);   // teclado y lectores de pantalla
+    giro.addEventListener('click', abrir);    // toque sobre cualquier cara de la carta
+
+    return {
+      iniciar() {
+        raiz.getAnimations().forEach(a => a.cancel());
+        ang = 0; auto = !calmo; abre = 0; sube = 0; zoom = 0; bloqueado = false;
+        pista.classList.remove('oculta');
+        t0 = performance.now(); tPrev = 0;
+        if (calmo) { pintar(0); return; }
+        if (!corre) { corre = true; raf = requestAnimationFrame(bucle); }
+      },
+      detener() { corre = false; cancelAnimationFrame(raf); }
+    };
+  })();
+
+  /* =====================================================================
+     Navegación entre pantallas
+     ===================================================================== */
+  const pantallas = {
+    sobre: document.getElementById('sobre'),
+    inicio: document.getElementById('inicio'),
+    carta: document.getElementById('carta'),
+    otra: document.getElementById('otra'),
+    flores: document.getElementById('flores')
+  };
+  const iris = document.getElementById('iris');
+  const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let enTransicion = false;
+
+  function mostrar(nombre) {
+    for (const [clave, el] of Object.entries(pantallas)) el.hidden = clave !== nombre;
+    if (nombre === 'flores') { escena.iniciar(); criatura.iniciar(); }
+    else { escena.detener(); criatura.detener(); }   // fuera de la pantalla final no se gasta batería animando
+    if (nombre === 'sobre') escenaSobre.iniciar(); else escenaSobre.detener();
+    window.scrollTo(0, 0);
+    const primero = pantallas[nombre].querySelector('button');
+    if (primero) primero.focus({ preventScroll: true });
+  }
+
+  // Transición: un círculo rosado nace en el botón, cubre la pantalla y se cierra en el centro,
+  // justo donde estallan las flores
+  function irisHacia(nombre, origen) {
+    if (enTransicion) return;
+    if (reducido || !iris.animate) { mostrar(nombre); return; }
+    enTransicion = true;
+
+    const r = origen.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const diag = Math.hypot(innerWidth, innerHeight) + 8;
+
+    iris.hidden = false;
+    iris.animate(
+      [{ clipPath: `circle(0px at ${x}px ${y}px)` }, { clipPath: `circle(${diag}px at ${x}px ${y}px)` }],
+      { duration: 650, easing: 'cubic-bezier(.6,0,.9,.4)', fill: 'forwards' }
+    ).finished.then(() => {
+      mostrar(nombre);
+      return iris.animate(
+        [{ clipPath: `circle(${diag}px at 50% 50%)` }, { clipPath: `circle(0px at 50% 50%)` }],
+        { duration: 950, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' }
+      ).finished;
+    }).then(() => {
+      iris.getAnimations().forEach(a => a.cancel());
+      iris.hidden = true;
+      enTransicion = false;
+    });
+  }
+
+  document.getElementById('si').addEventListener('click', () => mostrar('carta'));
+  document.getElementById('no').addEventListener('click', () => mostrar('otra'));
+  document.getElementById('volver').addEventListener('click', () => mostrar('inicio'));
+  document.getElementById('volver-inicio').addEventListener('click', () => mostrar('sobre'));
+  document.getElementById('recibir').addEventListener('click', e => irisHacia('flores', e.currentTarget));
+  // Aplica un tema completo: fondo, botón, bloque, criatura y pétalos (las flores amarillas no cambian)
+  let temaActual = 0;
+  function aplicarTema(i) {
+    const t = TEMAS[i], st = pantallas.flores.style;
+    st.setProperty('--noche', t.fondo);
+    st.setProperty('--rosa', t.acento);
+    st.setProperty('--tinta', t.tinta || t.fondo);
+    st.setProperty('--brillo', t.brillo);
+    st.setProperty('--cuerpo', t.cuerpo);
+    st.setProperty('--oscuro', t.oscuro);
+    st.setProperty('--vientre', t.vientre);
+    st.setProperty('--acento', t.detalle);
+    st.setProperty('--t-piel', t.tPiel);
+    st.setProperty('--t-cap', t.tortuga);
+    st.setProperty('--t-cima', t.tCima);
+    st.setProperty('--t-borde', t.tBorde);
+    criatura.tema(t);
+    escena.tema(t);
+  }
+  aplicarTema(0);
+  escenaSobre.iniciar();   // la página empieza con la carta girando
+
+  // Frases: en cada toque hablan los dos, y el turno avanza para que no se repitan seguidas
+  const FRASES = ['Te quiero', 'Nos vemos en Lima', 'Siempre pienso en ti', 'Te aprecio mucho', 'Te quiero mucho'];
+  let turnoFrase = 0;
+
+  document.getElementById('nuevo').addEventListener('click', () => {
+    criatura.hablar(FRASES[turnoFrase % FRASES.length], FRASES[(turnoFrase + 1) % FRASES.length]);
+    turnoFrase++;
+    temaActual = (temaActual + 1) % TEMAS.length;
+    aplicarTema(temaActual);
+    escena.reiniciar();
+    const hero = document.querySelector('.hero');
+    if (!reducido && hero && hero.animate) {
+      hero.animate([{ transform: 'scale(0.8)' }, { transform: 'scale(1)' }],
+                   { duration: 700, easing: 'cubic-bezier(.2,1.5,.4,1)' });
+    }
+  });
+</script>
+</body>
+</html>
